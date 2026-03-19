@@ -1,90 +1,139 @@
-<script lang="ts" setup>
-import { ref, onMounted } from 'vue';
+<script setup lang="ts">
+import { ref, watch, nextTick, computed } from 'vue';
+import { useDebounceFn, useLocalStorage } from '@vueuse/core';
 import type { Product } from '../types/product.types';
-import { useLocalStorage } from '@vueuse/core';
 
-const products = ref<Product[]>([]);
-const productOptions = ref(<SelectMenuItem<Product>[]>[]);
-const loading = ref(true);
+const props = defineProps<{}>();
+
+const searchTerm = ref('');
+const isOpen = ref(false);
+const selected = useState<Product | null>('selectedProduct', () => null);
+const loading = ref(false);
 const error = ref<string | null>(null);
-const selected = useLocalStorage('selectedProduct', null);
+const rawItems = ref<Product[]>([]);
+const highlightedIndex = ref(-1);
 
-const fetchProducts = async () => {
+let suppressSearch = false;
+let suppressOpen = false;
+
+/* ------------------ SEARCH LOGIC ------------------ */
+const doSearch = async (query: string) => {
   loading.value = true;
   error.value = null;
+  rawItems.value = [];
+
   try {
     const data = await $fetch(`/api/products`, {
       method: 'POST',
-      body: {
-        limit: 100,
-      },
+      body: { searchTerm: query },
     });
-    if (data.success) {
-      products.value = data.products;
-    } else {
-      error.value = data.error || 'Failed to load products';
+    rawItems.value = Array.isArray(data.products) ? data.products : [];
+  } catch (err: any) {
+    if (err.name !== 'AbortError') {
+      error.value = 'Failed to fetch data';
+      rawItems.value = [];
     }
-  } catch (e: any) {
-    error.value = e.message;
   } finally {
     loading.value = false;
   }
 };
 
-watch(products, (newProducts) => {
-  productOptions.value = Array.isArray(newProducts)
-    ? newProducts.map((product) => ({
-        label: `${product.PartNumber} - ${product.ProductDescription}`,
-        value: product.PartNumber,
-      }))
-    : [];
+const debouncedSearch = useDebounceFn((query: string) => {
+  if (query.length < 3) {
+    rawItems.value = [];
+    return;
+  }
+  doSearch(query);
+}, 500);
+
+watch(searchTerm, (q) => {
+  if (suppressSearch) return;
+  debouncedSearch(q);
 });
 
-const selectProduct = (product: Product | null) => {
-  selected.value = product;
-};
+const formattedItems = computed(() => {
+  return (rawItems.value ?? []).map((i: any) => {
+    return {
+      ...i,
+      name: i.productDescription,
+      id: i.partNumber,
+    };
+  });
+});
 
-onMounted(fetchProducts);
+/* ------------------ SELECT HANDLING ------------------ */
+function selectItem(item: any) {
+  if (!item || item.disabled) return;
+  selected.value = item;
+
+  suppressSearch = true;
+  suppressOpen = true;
+
+  searchTerm.value = item.PartNumber + ' - ' + item.ProductDescription;
+  isOpen.value = false;
+  nextTick(() => {
+    suppressSearch = false;
+
+    setTimeout(() => {
+      suppressOpen = false;
+    }, 50);
+  });
+}
+
+watch(isOpen, (open) => {
+  if (open) highlightedIndex.value = -1;
+});
 </script>
 
-<style>
-ul {
-  list-style: none;
-  padding: 0;
-}
-li {
-  margin-bottom: 8px;
-}
-button {
-  padding: 8px 16px;
-  font-size: 1rem;
-  cursor: pointer;
-}
-</style>
-
 <template>
-  <div>
-    <h1>Termék kiválasztása</h1>
-    <div v-if="loading">Betöltés...</div>
-    <div v-else-if="error">Hiba: {{ error }}</div>
-    <div v-else>
-      <USelectMenu
-        class="w-full"
-        v-model="selected"
-        :items="productOptions"
-        :search-input="{
-          placeholder: 'Keresés...',
-          icon: 'i-lucide-search',
-        }"
-        placeholder="Válasszon egy terméket"
-        @onSelect="selectProduct(selected)"
+  <div class="relative w-full flex flex-col" ref="wrapRef">
+    <!-- Search input -->
+    <input
+      type="text"
+      class="w-full border rounded px-3 py-2 text-lg"
+      :placeholder="'Keresés...'"
+      v-model="searchTerm"
+      @focus="if (!suppressOpen) isOpen = true;"
+    />
+
+    <!-- Dropdown -->
+    <div
+      v-if="isOpen"
+      ref="dropdownRef"
+      tabindex="0"
+      class="absolute top-full left-0 w-full bg-white border shadow-lg z-50 max-h-80 overflow-auto"
+    >
+      <!-- Loading -->
+      <div v-if="loading" class="p-3 text-gray-500 flex items-center gap-3">
+        <UIcon class="animate-spin" name="i-lucide-loader-pinwheel" />
+        Betöltés...
+      </div>
+
+      <!-- No results -->
+      <div v-else-if="formattedItems.length === 0" class="p-3 text-gray-400">
+        Nincs adat
+      </div>
+
+      <!-- Results -->
+      <div
+        v-for="(item, index) in formattedItems"
+        :key="item.id"
+        :data-item-index="index"
+        class="p-3"
+        :class="[
+          item.class,
+          index === highlightedIndex ? 'bg-blue-100' : 'hover:bg-blue-50',
+          item.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+        ]"
+        @click="!item.disabled && selectItem(item)"
+        @mouseenter="highlightedIndex = index"
       >
-        <template #item="{ item }">
-          <div class="flex items-center space-x-2">
-            <span>{{ item.label }} - {{ item.value }}</span>
-          </div>
-        </template>
-      </USelectMenu>
+        <div class="font-medium">
+          {{ item.PartNumber }} - {{ item.ProductDescription }}
+        </div>
+
+        <div class="text-sm text-gray-500"></div>
+      </div>
     </div>
   </div>
 </template>

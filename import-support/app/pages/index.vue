@@ -4,9 +4,7 @@ import ProductSelector from '../components/ProductSelector.vue';
 <template>
   <div>
     <UPageSection>
-      <UPageCTA>
-        <ProductSelector />
-      </UPageCTA>
+      <ProductSelector />
     </UPageSection>
   </div>
 </template>

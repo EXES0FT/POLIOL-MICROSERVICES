@@ -9,6 +9,7 @@ const searchTerm = ref('');
 const isOpen = ref(false);
 const selected = useState<Product | null>('selectedProduct', () => null);
 const ptrProductTree = useState<Product | null>('ptrProductTree', () => null);
+const fmProductTree = useState<Product | null>('fmProductTree', () => null);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const rawItems = ref<Product[]>([]);
@@ -77,6 +78,20 @@ const fetchPtrProductTree = async (productId: string) => {
   }
 };
 
+const fetchFmProductTree = async (productId: string) => {
+  try {
+    const data = await $fetch(`/api/fm-product-tree`, {
+      method: 'POST',
+      body: {
+        productId: productId,
+      },
+    });
+    return data.products || null;
+  } catch (err: any) {
+    return null;
+  }
+};
+
 /* ------------------ SELECT HANDLING ------------------ */
 async function selectItem(item: any) {
   if (!item || item.disabled) return;
@@ -86,6 +101,7 @@ async function selectItem(item: any) {
   suppressOpen = true;
 
   ptrProductTree.value = await fetchPtrProductTree(item.PartNumber);
+  fmProductTree.value = await fetchFmProductTree(item.PartNumber);
 
   searchTerm.value = item.PartNumber + ' - ' + item.ProductDescription;
   isOpen.value = false;
@@ -96,6 +112,7 @@ async function selectItem(item: any) {
       suppressOpen = false;
     }, 50);
   });
+  navigateTo('/info');
 }
 
 watch(isOpen, (open) => {

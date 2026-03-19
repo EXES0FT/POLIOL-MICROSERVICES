@@ -1,4 +1,8 @@
-<script setup>
+<script setup lang="ts">
+import type { Product } from '../../types/product.types';
+
+const ptrProductTree = useState<Product | null>('ptrProductTree', () => null);
+const fmProductTree = useState<Product | null>('fmProductTree', () => null);
 const data = ref([
   {
     root_part_no: '040000',
@@ -80,11 +84,13 @@ const data = ref([
 <template>
   <div class="h-screen">
     <div class="flex items-center justify-center h-full p-6">
-      <div class="w-full flex flex-col">
-        <h1 class="text-3xl font-bold">PTR állapot</h1>
-        <TechnologyTreeTable :rows="data" />
-      </div>
       <div class="w-full bg-green-500 h-full">JOBB OLDAL</div>
+      <div class="w-full flex flex-col h-full gap-6">
+        <h1 class="text-3xl font-bold">FACTORY állapot</h1>
+        <div class="w-full bg-gray-100 h-full rounded-lg p-4 overflow-auto">
+          <TechnologyTreeTable :rows="fmProductTree" />
+        </div>
+      </div>
     </div>
   </div>
 </template>

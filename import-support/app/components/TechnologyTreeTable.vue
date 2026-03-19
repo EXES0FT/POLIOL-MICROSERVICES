@@ -168,20 +168,6 @@ function getIndentPx(level: number) {
   return `${Math.max(0, level) * 20}px`;
 }
 
-function expandAllNodes(nodes: TreeNode[]) {
-  const next: Record<string, boolean> = {};
-
-  const visit = (items: TreeNode[]) => {
-    for (const item of items) {
-      next[item.id] = true;
-      if (item.children?.length) visit(item.children);
-    }
-  };
-
-  visit(nodes);
-  expanded.value = next;
-}
-
 const columns: TableColumn<TreeNode>[] = [
   {
     id: 'part',
@@ -274,104 +260,11 @@ const columns: TableColumn<TreeNode>[] = [
     },
     cell: ({ row }) => formatNumber(row.original.cumulative_qty, 4),
   },
-  {
-    id: 'operations',
-    header: 'Operations',
-    cell: ({ row }) => {
-      const ops = row.original.operations;
-
-      if (!ops.length) {
-        return h('span', { class: 'text-muted' }, '—');
-      }
-
-      return h(
-        'div',
-        { class: 'flex flex-wrap gap-1.5' },
-        ops.map((op) =>
-          h(
-            UBadge,
-            {
-              color: 'primary',
-              variant: 'subtle',
-            },
-            () => `${op.operationNo ?? 'N/A'}`,
-          ),
-        ),
-      );
-    },
-  },
-  {
-    id: 'resources',
-    header: 'Resources',
-    cell: ({ row }) => {
-      const resources = [
-        ...new Set(
-          row.original.operations.map((op) => op.resource).filter(Boolean),
-        ),
-      ];
-
-      if (!resources.length) {
-        return h('span', { class: 'text-muted' }, '—');
-      }
-
-      return h(
-        'div',
-        { class: 'flex flex-wrap gap-1.5' },
-        resources.map((resource) =>
-          h(
-            UBadge,
-            {
-              color: 'neutral',
-              variant: 'outline',
-            },
-            () => String(resource),
-          ),
-        ),
-      );
-    },
-  },
-  {
-    id: 'op_norm_total',
-    header: 'Unit Op Norm Σ',
-    meta: {
-      class: {
-        th: 'text-right w-36',
-        td: 'text-right w-36',
-      },
-    },
-    cell: ({ row }) => {
-      const total = row.original.operations.reduce(
-        (sum, op) => sum + (op.unitOpNorm ?? 0),
-        0,
-      );
-      return formatNumber(total, 4);
-    },
-  },
 ];
 </script>
 
 <template>
   <div class="space-y-4">
-    <div class="flex flex-wrap gap-2">
-      <UButton
-        color="neutral"
-        variant="outline"
-        icon="i-lucide-expand"
-        @click="expandAllNodes(treeData)"
-      >
-        Expand all
-      </UButton>
-
-      <UButton
-        color="neutral"
-        variant="outline"
-        icon="i-lucide-shrink"
-        @click="expanded = {}"
-      >
-        Collapse all
-      </UButton>
-    </div>
-
     <UTable
       :data="treeData"
       :columns="columns"
@@ -392,23 +285,26 @@ const columns: TableColumn<TreeNode>[] = [
         <div class="p-4 bg-elevated/40 border-t border-default">
           <div class="grid gap-4 lg:grid-cols-2">
             <div class="space-y-2">
-              <div class="text-xs uppercase tracking-wide text-muted">Node</div>
+              <div class="text-xs uppercase tracking-wide text-muted">
+                termék adatok
+              </div>
               <div
                 class="rounded-lg border border-default p-3 space-y-1 text-sm"
               >
                 <div>
-                  <span class="text-muted">Part:</span>
+                  <span class="text-muted">Cikkszám:</span>
                   {{ row.original.part_no }}
                 </div>
                 <div>
-                  <span class="text-muted">Parent:</span>
+                  <span class="text-muted">Szülő termék:</span>
                   {{ row.original.parent_part_no || '—' }}
                 </div>
                 <div>
-                  <span class="text-muted">Path:</span> {{ row.original.path }}
+                  <span class="text-muted">Útvonal:</span>
+                  {{ row.original.path }}
                 </div>
                 <div>
-                  <span class="text-muted">Description:</span>
+                  <span class="text-muted">Leírás:</span>
                   {{
                     row.original.component_part_description ||
                     row.original.parent_part_description ||
@@ -465,10 +361,8 @@ const columns: TableColumn<TreeNode>[] = [
               </div>
 
               <div v-else class="rounded-lg border border-default p-3 text-sm">
-                <div class="font-medium mb-1">No operations on this node</div>
-                <div class="text-muted">
-                  This product is still expandable and shows its product details
-                  above.
+                <div class="font-medium mb-1">
+                  Nincsenek műveletek ezen a terméken
                 </div>
               </div>
             </div>

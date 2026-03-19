@@ -8,6 +8,7 @@ const props = defineProps<{}>();
 const searchTerm = ref('');
 const isOpen = ref(false);
 const selected = useState<Product | null>('selectedProduct', () => null);
+const ptrProductTree = useState<Product | null>('ptrProductTree', () => null);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const rawItems = ref<Product[]>([]);
@@ -22,6 +23,7 @@ const doSearch = async (query: string) => {
   error.value = null;
   rawItems.value = [];
 
+  console.log('Searching for:', query);
   try {
     const data = await $fetch(`/api/products`, {
       method: 'POST',
@@ -61,13 +63,29 @@ const formattedItems = computed(() => {
   });
 });
 
+const fetchPtrProductTree = async (productId: string) => {
+  try {
+    const data = await $fetch(`/api/ptr-product-tree`, {
+      method: 'POST',
+      body: {
+        productId: productId,
+      },
+    });
+    return data.products || null;
+  } catch (err: any) {
+    return null;
+  }
+};
+
 /* ------------------ SELECT HANDLING ------------------ */
-function selectItem(item: any) {
+async function selectItem(item: any) {
   if (!item || item.disabled) return;
   selected.value = item;
 
   suppressSearch = true;
   suppressOpen = true;
+
+  ptrProductTree.value = await fetchPtrProductTree(item.PartNumber);
 
   searchTerm.value = item.PartNumber + ' - ' + item.ProductDescription;
   isOpen.value = false;

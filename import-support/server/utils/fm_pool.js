@@ -12,7 +12,8 @@ const config = {
   },
 };
 
-const pool = new sql.ConnectionPool(config);
-const poolConnect = pool.connect();
+const fmPool = new sql.ConnectionPool(config);
+const fmPoolConnect = fmPool.connect();
+const fmPoolsql = sql;
 
-export { pool, poolConnect, sql };
+export { fmPool, fmPoolConnect, fmPoolsql };

@@ -84,7 +84,10 @@ const data = ref([
 <template>
   <div class="h-screen">
     <div class="flex items-center justify-center h-full p-6">
-      <div class="w-full bg-green-500 h-full">JOBB OLDAL</div>
+      <div class="w-full flex flex-col h-full gap-6">
+        <h1 class="text-3xl font-bold">PTR állapot</h1>
+        <TechnologyTreeTablePtr :rows="ptrProductTree" />
+      </div>
       <div class="w-full flex flex-col h-full gap-6">
         <h1 class="text-3xl font-bold">FACTORY állapot</h1>
         <div class="w-full bg-gray-100 h-full rounded-lg p-4 overflow-auto">

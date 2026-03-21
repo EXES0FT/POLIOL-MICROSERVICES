@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from 'vue';
-import { useDebounceFn, useLocalStorage } from '@vueuse/core';
+import { useDebounceFn } from '@vueuse/core';
 import type { Product } from '../types/product.types';
 
 const props = defineProps<{}>();
@@ -10,7 +10,9 @@ const isOpen = ref(false);
 const selected = useState<Product | null>('selectedProduct', () => null);
 const ptrProductTree = useState<Product | null>('ptrProductTree', () => null);
 const fmProductTree = useState<Product | null>('fmProductTree', () => null);
-const loading = ref(false);
+
+const loading = ref(false); // search dropdown loading
+const selecting = ref(false); // full-screen loading while both trees load
 const error = ref<string | null>(null);
 const rawItems = ref<Product[]>([]);
 const highlightedIndex = ref(-1);
@@ -24,12 +26,12 @@ const doSearch = async (query: string) => {
   error.value = null;
   rawItems.value = [];
 
-  console.log('Searching for:', query);
   try {
     const data = await $fetch(`/api/products`, {
       method: 'POST',
       body: { searchTerm: query },
     });
+
     rawItems.value = Array.isArray(data.products) ? data.products : [];
   } catch (err: any) {
     if (err.name !== 'AbortError') {
@@ -69,7 +71,7 @@ const fetchPtrProductTree = async (productId: string) => {
     const data = await $fetch(`/api/ptr-product-tree`, {
       method: 'POST',
       body: {
-        productId: productId,
+        productId,
       },
     });
     return data.products || null;
@@ -83,7 +85,7 @@ const fetchFmProductTree = async (productId: string) => {
     const data = await $fetch(`/api/fm-product-tree`, {
       method: 'POST',
       body: {
-        productId: productId,
+        productId,
       },
     });
     return data.products || null;
@@ -94,25 +96,43 @@ const fetchFmProductTree = async (productId: string) => {
 
 /* ------------------ SELECT HANDLING ------------------ */
 async function selectItem(item: any) {
-  if (!item || item.disabled) return;
-  selected.value = item;
+  if (!item || item.disabled || selecting.value) return;
 
+  selected.value = item;
   suppressSearch = true;
   suppressOpen = true;
+  selecting.value = true;
+  error.value = null;
 
-  ptrProductTree.value = await fetchPtrProductTree(item.PartNumber);
-  fmProductTree.value = await fetchFmProductTree(item.PartNumber);
+  try {
+    const [ptrTree, fmTree] = await Promise.all([
+      fetchPtrProductTree(item.PartNumber),
+      fetchFmProductTree(item.PartNumber),
+    ]);
 
-  searchTerm.value = item.PartNumber + ' - ' + item.ProductDescription;
-  isOpen.value = false;
-  nextTick(() => {
+    ptrProductTree.value = ptrTree;
+    fmProductTree.value = fmTree;
+
+    searchTerm.value = item.PartNumber + ' - ' + item.ProductDescription;
+    isOpen.value = false;
+
+    await nextTick();
+
     suppressSearch = false;
-
     setTimeout(() => {
       suppressOpen = false;
     }, 50);
-  });
-  navigateTo('/info');
+
+    await navigateTo('/info');
+  } catch (err) {
+    error.value = 'Failed to load product trees';
+    suppressSearch = false;
+    setTimeout(() => {
+      suppressOpen = false;
+    }, 50);
+  } finally {
+    selecting.value = false;
+  }
 }
 
 watch(isOpen, (open) => {
@@ -122,12 +142,24 @@ watch(isOpen, (open) => {
 
 <template>
   <div class="relative w-full flex flex-col" ref="wrapRef">
+    <!-- Fullscreen loading overlay while both requests are running -->
+    <div
+      v-if="selecting"
+      class="fixed inset-0 z-[9999] bg-white/80 backdrop-blur-sm flex items-center justify-center"
+    >
+      <div class="flex flex-col items-center gap-3 text-gray-700">
+        <UIcon class="animate-spin text-3xl" name="i-lucide-loader-pinwheel" />
+        <div class="text-lg font-medium">Termék betöltése...</div>
+      </div>
+    </div>
+
     <!-- Search input -->
     <input
       type="text"
       class="w-full border rounded px-3 py-2 text-lg"
       :placeholder="'Keresés...'"
       v-model="searchTerm"
+      :disabled="selecting"
       @focus="if (!suppressOpen) isOpen = true;"
     />
 

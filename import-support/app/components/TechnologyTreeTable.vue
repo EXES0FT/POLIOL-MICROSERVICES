@@ -171,7 +171,7 @@ function getIndentPx(level: number) {
 const columns: TableColumn<TreeNode>[] = [
   {
     id: 'part',
-    header: 'Part',
+    header: 'Termék',
     cell: ({ row }) => {
       const original = row.original;
       const isExpanded = !!row.getIsExpanded?.();
@@ -217,7 +217,7 @@ const columns: TableColumn<TreeNode>[] = [
               { class: 'text-xs text-muted truncate max-w-[28rem]' },
               original.component_part_description ||
                 original.parent_part_description ||
-                'No description',
+                'Nincs megnevezés',
             ),
           ]),
         ],
@@ -226,7 +226,7 @@ const columns: TableColumn<TreeNode>[] = [
   },
   {
     accessorKey: 'lvl',
-    header: 'Level',
+    header: 'Beépítési szint',
     meta: {
       class: {
         th: 'w-20',
@@ -240,7 +240,7 @@ const columns: TableColumn<TreeNode>[] = [
   },
   {
     accessorKey: 'qty_required_per_parent',
-    header: 'Qty / Parent',
+    header: 'Mennyiség / szülő',
     meta: {
       class: {
         th: 'text-right w-32',
@@ -251,7 +251,7 @@ const columns: TableColumn<TreeNode>[] = [
   },
   {
     accessorKey: 'cumulative_qty',
-    header: 'Cumulative Qty',
+    header: 'Kumulált Mennyiség',
     meta: {
       class: {
         th: 'text-right w-32',
@@ -337,10 +337,10 @@ const columns: TableColumn<TreeNode>[] = [
                 <table class="w-full text-sm">
                   <thead class="bg-elevated/60">
                     <tr>
-                      <th class="text-left px-3 py-2">Op No</th>
-                      <th class="text-left px-3 py-2">Resource</th>
-                      <th class="text-left px-3 py-2">Setup</th>
-                      <th class="text-right px-3 py-2">Unit Norm</th>
+                      <th class="text-left px-3 py-2">Művelet ssz.</th>
+                      <th class="text-left px-3 py-2">Erőforrás</th>
+                      <th class="text-left px-3 py-2">Beállítás</th>
+                      <th class="text-right px-3 py-2">Egység norma</th>
                     </tr>
                   </thead>
                   <tbody>

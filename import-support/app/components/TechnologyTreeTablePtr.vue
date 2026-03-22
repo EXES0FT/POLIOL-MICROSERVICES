@@ -7,11 +7,14 @@ type TechnologyRow = {
   root_product_id: number | string;
   parent_product_id: number | string | null;
   product_id: number | string;
+  product_qtt: number | null;
   product_name: string | null;
   lvl: number;
   path: string;
+  manufactured: number | null;
   resource: string | null;
   process_group: string | null;
+  raw_materials?: RawMaterial[] | string | null;
   process: string | null;
   unit_norm: number | string | null;
   sorrend: number | string | null;
@@ -21,10 +24,13 @@ type TreeNode = {
   id: string;
   root_product_id: string;
   parent_product_id: string | null;
+  product_qtt?: number | null;
   product_id: string;
+  raw_materials: RawMaterial[];
   product_name: string | null;
   lvl: number;
   path: string;
+  manufactured: string | null;
   operations: Array<{
     resource: string | null;
     processGroup: string | null;
@@ -34,6 +40,13 @@ type TreeNode = {
   }>;
   children: TreeNode[];
   expandable: boolean;
+};
+
+type RawMaterial = {
+  Anyag: string | null;
+  Vagas: number | string | null;
+  Darab: number | string | null;
+  megjegyzes: string | null;
 };
 
 const props = defineProps<{
@@ -74,6 +87,9 @@ const treeData = computed<TreeNode[]>(() => {
         parent_product_id: toId(row.parent_product_id),
         product_name: row.product_name ?? null,
         product_id: String(row.product_id),
+        product_qtt: row.product_qtt,
+        raw_materials: parseRawMaterials(row.raw_materials),
+        manufactured: row.manufactured === 1 ? 'MA' : 'BI',
         lvl: Number(row.lvl ?? 0),
         path: row.path,
         operations: [],
@@ -172,6 +188,35 @@ function getIndentPx(level: number) {
   return `${Math.max(0, level) * 20}px`;
 }
 
+function parseRawMaterials(value: unknown): RawMaterial[] {
+  if (!value) return [];
+
+  if (Array.isArray(value)) {
+    return value.map((item) => ({
+      Anyag: item?.Anyag ?? null,
+      Vagas: item?.Vagas ?? null,
+      Darab: item?.Darab ?? null,
+      megjegyzes: item?.megjegyzes ?? null,
+    }));
+  }
+
+  if (typeof value !== 'string') return [];
+
+  return value
+    .split('##')
+    .filter(Boolean)
+    .map((row) => {
+      const [Anyag, Vagas, Darab, megjegyzes] = row.split('||');
+
+      return {
+        Anyag: Anyag || null,
+        Vagas: Vagas || null,
+        Darab: Darab || null,
+        megjegyzes: megjegyzes || null,
+      };
+    });
+}
+
 const columns: TableColumn<TreeNode>[] = [
   {
     id: 'product',
@@ -191,13 +236,11 @@ const columns: TableColumn<TreeNode>[] = [
           h(
             UButton,
             {
-              color: 'neutral',
-              variant: 'ghost',
+              color: 'black',
+              variant: 'solid',
               size: 'xs',
-              class: 'mt-0.5 mr-1 shrink-0',
-              icon: isExpanded
-                ? 'i-lucide-chevron-down'
-                : 'i-lucide-chevron-right',
+              class: 'bg-stone-200 mr-3! mt-0.5 mr-1 shrink-0',
+              icon: isExpanded ? 'i-lucide-minus' : 'i-lucide-plus',
               onClick: () => row.toggleExpanded?.(),
             },
             () => '',
@@ -206,7 +249,24 @@ const columns: TableColumn<TreeNode>[] = [
             h(
               'div',
               { class: 'text-xl text-highlighted flex items-center gap-2' },
-              h('span', null, `${original.product_id}`),
+              [
+                h('span', null, `${original.product_id}`),
+                h(
+                  UBadge,
+                  {
+                    class: [
+                      original.manufactured === 'BI'
+                        ? 'bg-yellow-400'
+                        : 'bg-rose-400',
+                      'text-black font-semibold',
+                    ],
+                    variant: 'solid',
+                    size: 'xl',
+                    label: original.manufactured,
+                  },
+                  () => original.manufactured,
+                ),
+              ],
             ),
             h(
               'div',
@@ -216,6 +276,20 @@ const columns: TableColumn<TreeNode>[] = [
           ]),
         ],
       );
+    },
+  },
+  {
+    accessorKey: 'product_qtt',
+    header: 'Mennyiség',
+    meta: {
+      class: {
+        th: 'w-32 text-right',
+        td: 'w-32 text-right font-medium',
+      },
+    },
+    cell: ({ row }) => {
+      const qtt = row.original.product_qtt;
+      return qtt !== null && qtt !== undefined ? String(qtt) : '—';
     },
   },
   {
@@ -265,7 +339,7 @@ const columns: TableColumn<TreeNode>[] = [
       }"
     >
       <template #expanded="{ row }">
-        <div class="p-4 bg-elevated/40 border-t border-default">
+        <div class="px-4 bg-elevated/40">
           <div class="gap-4">
             <div class="space-y-2">
               <div class="text-xs uppercase tracking-wide text-muted">
@@ -309,6 +383,40 @@ const columns: TableColumn<TreeNode>[] = [
                   Nincsenek műveletek ezen a terméken
                 </div>
               </div>
+            </div>
+          </div>
+          <div v-if="row.original.raw_materials.length" class="space-y-2 mt-4">
+            <div class="text-xs uppercase tracking-wide text-muted">
+              szokásos alapanyagok
+            </div>
+
+            <div class="rounded-lg border border-default overflow-hidden">
+              <table class="w-full text-sm">
+                <thead class="bg-elevated/60">
+                  <tr>
+                    <th class="text-left px-3 py-2">Anyag</th>
+                    <th class="text-right px-3 py-2">Vágás</th>
+                    <th class="text-right px-3 py-2">Darab</th>
+                    <th class="text-left px-3 py-2">Megjegyzés</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="(material, index) in row.original.raw_materials"
+                    :key="`${row.original.id}-rm-${index}`"
+                    class="border-t border-default"
+                  >
+                    <td class="px-3 py-2">{{ material.Anyag ?? '—' }}</td>
+                    <td class="px-3 py-2 text-right">
+                      {{ material.Vagas ?? '—' }}
+                    </td>
+                    <td class="px-3 py-2 text-right">
+                      {{ material.Darab ?? '—' }}
+                    </td>
+                    <td class="px-3 py-2">{{ material.megjegyzes ?? '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

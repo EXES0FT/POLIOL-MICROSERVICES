@@ -82,15 +82,20 @@ const data = ref([
 ]);
 </script>
 <template>
-  <div class="h-screen">
-    <div class="flex items-center justify-center h-full p-6">
-      <div class="w-full flex flex-col h-full gap-6">
+  <div class="h-screen w-screen flex">
+    <div class="flex w-full items-center justify-center h-full p-6">
+      <div class="flex flex-col overflow-auto h-full gap-6 w-1/2 min-w-0 pr-6">
         <h1 class="text-3xl font-bold">PTR állapot</h1>
-        <TechnologyTreeTablePtr :rows="ptrProductTree" />
+        <div class="flex flex-col overflow-auto h-full gap-6 min-w-0">
+          <TechnologyTreeTablePtr :rows="ptrProductTree" />
+        </div>
       </div>
-      <div class="w-full flex flex-col h-full gap-6">
+
+      <div
+        class="flex flex-col h-full gap-6 w-1/2 min-w-0 border-l-2 border-default pl-6"
+      >
         <h1 class="text-3xl font-bold">FACTORY állapot</h1>
-        <div class="w-full bg-gray-100 h-full rounded-lg p-4 overflow-auto">
+        <div class="flex flex-col overflow-auto h-full gap-6 min-w-0">
           <TechnologyTreeTable :rows="fmProductTree" />
         </div>
       </div>
